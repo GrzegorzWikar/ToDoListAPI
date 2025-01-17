@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ToDoAPI.Data;
 
@@ -10,9 +11,11 @@ using ToDoAPI.Data;
 namespace ToDoAPI.Migrations
 {
     [DbContext(typeof(ToDoAPIContext))]
-    partial class ToDoAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20250117100054_JwtToken")]
+    partial class JwtToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -80,17 +83,6 @@ namespace ToDoAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FirstName = "System",
-                            LastName = "",
-                            Password = "System",
-                            Username = "System",
-                            isActive = false
-                        });
                 });
 #pragma warning restore 612, 618
         }
