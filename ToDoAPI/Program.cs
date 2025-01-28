@@ -5,6 +5,7 @@ using ToDoAPI.Login;
 using ToDoAPI.Model;
 using ToDoAPI.Service;
 using Microsoft.OpenApi.Models;
+using ToDoAPI.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<ToDoAPIContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ToDoAPIContext") ?? throw new InvalidOperationException("Connection string 'ToDoAPIContext' not found.")));
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IToDoTaskRepository, ToDoTaskRepository>();
 
 builder.Services.AddSwaggerGen(swagger =>
 {

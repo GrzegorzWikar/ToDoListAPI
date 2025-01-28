@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ToDoAPI.Data;
+using ToDoAPI.DTO;
 using ToDoAPI.Helpers;
 using ToDoAPI.Interface;
 using ToDoAPI.Model;
@@ -12,7 +11,7 @@ namespace ToDoAPI.Controllers
     public class UsersController : ControllerBase
     {
         private IUserService _userService;
-
+        
         public UsersController(IUserService userService)
         {
             _userService = userService;
@@ -25,13 +24,20 @@ namespace ToDoAPI.Controllers
 
             if (response == null) return BadRequest(new { message = "Username or password is incorrect" });
 
-            return Ok(response);
 
+
+            return Ok(response);
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<DTOUser>>> GetAllUsers() 
+        {
+            return Ok(await _userService.GetAll());
         }
 
         [HttpPost]
-        [Authorize]
-        public async Task<IActionResult> Post([FromBody] User userObj) 
+        public async Task<ActionResult<User>> Post([FromBody] User userObj) 
         {
             userObj.Id = 0;
             return Ok(await _userService.AddAndUpdateUser(userObj));

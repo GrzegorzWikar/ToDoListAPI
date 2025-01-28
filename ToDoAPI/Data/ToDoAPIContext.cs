@@ -19,15 +19,14 @@ namespace ToDoAPI.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>().HasData(
-                new User 
-                {
-                    Id = 1,
-                    FirstName = "System",
-                    LastName = "",
-                    Username = "System",
-                    Password = "System",
-                });
+            modelBuilder.Entity<User>()
+                .HasMany(e => e.Tasks)
+                .WithOne(e => e.User)
+                .HasForeignKey(e => e.UserId)
+                .HasPrincipalKey(e => e.Id);
+
+            modelBuilder.Entity<ToDoTask>()
+                .HasOne(e => e.User);
         }
     }
 }

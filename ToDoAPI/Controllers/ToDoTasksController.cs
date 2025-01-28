@@ -1,8 +1,8 @@
+﻿using ToDoAPI.Helpers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ToDoAPI.Data;
-using ToDoAPI.Helpers;
+using ToDoAPI.DTO;
 using ToDoAPI.Model;
+using ToDoAPI.Interface;
 
 namespace ToDoAPI.Controllers
 {
@@ -11,25 +11,46 @@ namespace ToDoAPI.Controllers
     [Authorize]
     public class ToDoTasksController : ControllerBase
     {
-        private readonly ToDoAPIContext _context;
+        private IToDoTaskRepository _toDoTaskRepository;
+        private IUserService _userService;
+        private Converter _converter = Converter.GetInstance();
 
-        public ToDoTasksController(ToDoAPIContext context)
+
+        public ToDoTasksController(IToDoTaskRepository toDoTaskRepository, IUserService userService)
         {
-            _context = context;
+            _toDoTaskRepository = toDoTaskRepository;
+            _userService = userService;
         }
 
         // GET: api/ToDoTasks
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ToDoTask>>> GetToDoTask()
+        public async Task<ActionResult<IEnumerable<DTOToDoTask>>?> GetToDoTasks()
         {
-            return await _context.ToDoTask.ToListAsync();
+            IEnumerable<ToDoTask>? toDoTasks = await _toDoTaskRepository.GetAll();
+
+            List<DTOToDoTask> dtoToDoTasks = new List<DTOToDoTask>();
+
+            if (toDoTasks != null)
+            {
+                foreach (ToDoTask toDoTask in toDoTasks)
+                {
+
+                    DTOToDoTask dtoToDoTask = _converter.ToDoTaskToDTOToDoTask(toDoTask);
+
+                    dtoToDoTasks.Add(dtoToDoTask);
+                }
+
+                return dtoToDoTasks;
+            }
+
+            return null; 
         }
 
         // GET: api/ToDoTasks/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<ToDoTask>> GetToDoTask(int id)
+        [HttpGet("{TaskId}")]
+        public async Task<ActionResult<ToDoTask>> GetToDoTask(int TaskId)
         {
-            var toDoTask = await _context.ToDoTask.FindAsync(id);
+            ToDoTask? toDoTask = await _toDoTaskRepository.GetById(TaskId);
 
             if (toDoTask == null)
             {
@@ -39,67 +60,72 @@ namespace ToDoAPI.Controllers
             return toDoTask;
         }
 
+        [HttpGet("User/{userId}")]
+        public async Task<ActionResult<IEnumerable<DTOToDoTask>>?> GetAllUserToDoTasks(int userId)
+        {
+            IEnumerable<ToDoTask>? toDoTasks = await _toDoTaskRepository.GetAllTaskOfUser(userId);
+
+            List<DTOToDoTask> DTOToDoTasks = new List<DTOToDoTask>();
+
+            if (toDoTasks != null)
+            {
+                foreach (ToDoTask toDoTask in toDoTasks)
+                {
+                    DTOToDoTask DTOToDoTask = _converter.ToDoTaskToDTOToDoTask(toDoTask);
+
+                    DTOToDoTasks.Add(DTOToDoTask);
+                }
+
+                return DTOToDoTasks;
+            }
+
+            return null;
+        }
+
         // PUT: api/ToDoTasks/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutToDoTask(int id, ToDoTask toDoTask)
+        [HttpPut]
+        public async Task<IActionResult> PutToDoTask([FromBody] DTOToDoTask DTOToDoTask)
         {
-            if (id != toDoTask.Id)
-            {
-                return BadRequest();
-            }
+            ToDoTask? toDoTask = await _toDoTaskRepository.GetById(DTOToDoTask.Id);
 
-            _context.Entry(toDoTask).State = EntityState.Modified;
+            if (toDoTask == null) return NotFound();
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ToDoTaskExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            ToDoTask newToDoTask = _converter.DTOToDoTaskToToDoTask(toDoTask.User, DTOToDoTask);
+            
+            _toDoTaskRepository.Insert(newToDoTask);
+
+            _toDoTaskRepository.Save();
 
             return Ok();
         }
 
         // POST: api/ToDoTasks
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<IActionResult> PostToDoTask(ToDoTask toDoTask)
+        [HttpPost("{userId}")]
+        public async Task<IActionResult> PostToDoTask(int userId, [FromBody] DTOToDoTask DTOToDoTask)
         {
-            _context.ToDoTask.Add(toDoTask);
-            await _context.SaveChangesAsync();
+            DTOUser? dTOUser = await _userService.GetById(userId);
+            if (dTOUser == null) return NotFound();
+
+            User? user = _converter.DTOUserToUser(dTOUser);
+            if(user == null) return NotFound();
+
+            ToDoTask newToDoTask = _converter.DTOToDoTaskToToDoTask(user,DTOToDoTask);
+            _toDoTaskRepository.Insert(newToDoTask);
+            _toDoTaskRepository.Save();
 
             return Ok();
         }
 
         // DELETE: api/ToDoTasks/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteToDoTask(int id)
+        [HttpDelete("{TaskId}")]
+        public async Task<IActionResult> DeleteToDoTask(int TaskId)
         {
-            var toDoTask = await _context.ToDoTask.FindAsync(id);
-            if (toDoTask == null)
-            {
-                return NotFound();
-            }
-
-            _context.ToDoTask.Remove(toDoTask);
-            await _context.SaveChangesAsync();
+            _toDoTaskRepository.Delete(TaskId);
+            _toDoTaskRepository.Save();
 
             return Ok();
-        }
-
-        private bool ToDoTaskExists(int id)
-        {
-            return _context.ToDoTask.Any(e => e.Id == id);
         }
     }
 }

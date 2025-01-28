@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using ToDoAPI.Data;
@@ -8,6 +7,8 @@ using ToDoAPI.Interface;
 using System.Security.Claims;
 using ToDoAPI.Model;
 using Microsoft.EntityFrameworkCore;
+using ToDoAPI.DTO;
+using ToDoAPI.Helpers;
 
 namespace ToDoAPI.Service
 {
@@ -15,6 +16,7 @@ namespace ToDoAPI.Service
     {
         private readonly AppSettings _appSettings;
         private readonly ToDoAPIContext db;
+        private Converter _converter = Converter.GetInstance();
 
         public UserService(IOptions<AppSettings> appSettings, ToDoAPIContext _db) 
         {
@@ -33,37 +35,55 @@ namespace ToDoAPI.Service
             return new AuthenticateResponse(user, token);
         }   
 
-        public async Task<IEnumerable<User>> GetAll()
+        public async Task<IEnumerable<DTOUser>> GetAll()
         {
-            return await db.Users.Where(x => x.isActive == true).ToListAsync();
+            ICollection<User>? users = await db.Users.ToListAsync();
+
+            ICollection<DTOUser> DTOUsers = new List<DTOUser>();
+
+            foreach(User User in users)
+            {
+                DTOUser DTOUser = _converter.UserToDTOUser(User);
+
+                DTOUsers.Add(DTOUser);
+            }
+
+            return DTOUsers;
         }
 
-        public async Task<User?> GetById(int id)
+        public async Task<DTOUser?> GetById(int id)
         {
-            return await db.Users.FirstOrDefaultAsync(x => x.Id == id);
+            User? user = await db.Users.FirstOrDefaultAsync(x => x.Id == id);
+
+            if (user == null) return null;
+
+            DTOUser DTOUser = _converter.UserToDTOUser(user);
+
+            return DTOUser;
         }
 
-        public async Task<User?> AddAndUpdateUser(User userObj)
+        public async Task<DTOUser?> AddAndUpdateUser(User user)
         {
             bool isSuccess = false;
-            if (userObj.Id > 0) 
+
+            if (user.Id > 0) 
             {
-                var obj = await db.Users.FirstOrDefaultAsync(c =>  c.Id == userObj.Id);
-                if (obj != null)
+                if (user != null)
                 {
-                    obj.FirstName = userObj.FirstName;
-                    obj.LastName = userObj.LastName;
-                    db.Users.Update(obj);
+                    db.Users.Update(user);
                     isSuccess = await db.SaveChangesAsync() > 0;
                 } 
             }
             else
             {
-                await db.Users.AddAsync(userObj);
+
+                await db.Users.AddAsync(user);
                 isSuccess = await db.SaveChangesAsync() > 0;
             }
 
-            return isSuccess ? userObj : null;
+            if (user == null) return null;
+
+            return isSuccess ? _converter.UserToDTOUser(user) : null;
         }
 
         private async Task<string> genereteJwtToken(User user)
